@@ -15,7 +15,7 @@ export default function ChainsBlock({ title, selectedChain, setSelectedChain, ch
       setSelectedChain(activeChain);
     }
   }, [activeChain, selectedChain]);
-  console.log("render buttons");
+
   return (
     <>
       <p className={form.title}>{title}</p>

@@ -270,10 +270,10 @@ export default function CreateTestamentForm({ selectedChain, userAddress, contra
                       const allowance = await getErc20Approvals(
                         selectedChain,
                         userAddress,
-                        token.address,
-                        contractAddress
+                        contractAddress,
+                        token.address
                       );
-                      token.allowance = allowance[0]?.allowance || 0;
+                      token.allowance = allowance[0]?.allowance;
                     } catch (error) {
                       console.error(error);
                     }
