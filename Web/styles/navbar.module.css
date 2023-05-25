@@ -1,0 +1,71 @@
+/* Стили для заголовка */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0px 20px;
+  font-size: 25px;
+  background-color: var(--color-primary);
+  position: fixed;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  border-bottom: solid white;
+}
+
+/* Стили для кнопок */
+.button {
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 25px;
+  padding: 2vh 5vw;
+  margin: 0px -2px 0px 0px;
+  border-top: none;
+  border-bottom: none;
+  border-left: solid var(--color-secondary);
+  border-right: solid var(--color-secondary);
+  transition: background-color 0.3s ease;
+}
+
+.button:hover,
+.button.active {
+  background-color: white;
+  color: black;
+}
+.button-80001:hover,
+.button-80001.active {
+  background-color: var(--color-80001);
+}
+
+.button-97:hover,
+.button-97.active {
+  color: #1c1c1f;
+  background-color: var(--color-97);
+}
+
+.button-11155111:hover,
+.button-11155111.active {
+  background-color: var(--color-11155111);
+}
+
+.button-1337:hover,
+.button-1337.active {
+  color: #1c1c1f;
+  background-color: var(--color-1337);
+}
+
+.button-80001 {
+  border-color: var(--color-80001);
+}
+
+.button-97 {
+  border-color: var(--color-97);
+}
+
+.button-11155111 {
+  border-color: var(--color-11155111);
+}
+
+.button-1337 {
+  border-color: var(--color-1337);
+}

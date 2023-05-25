@@ -1,0 +1,20 @@
+.button {
+  cursor: pointer;
+}
+
+.content {
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.visible {
+  max-height: 100%;
+  opacity: 1;
+}
+
+.hidden {
+  max-height: 0;
+  opacity: 0;
+}
