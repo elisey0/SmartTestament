@@ -3,7 +3,7 @@ import { contractsAddresses } from "../utils/constants/contractsInfo";
 export default function Footer() {
   return (
     <p>
-      Открытая разработка: <a href="https://github.com/">Github </a>|{" "}
+      Открытая разработка: <a href="https://github.com/elisey0/CryptoTestament">Github </a>|{" "}
       <a href={`https://mumbai.polygonscan.com/address/${contractsAddresses[80001]}`}>
         Mumbai Contract
       </a>{" "}
