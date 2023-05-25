@@ -2,7 +2,7 @@ import { useContractRead } from "@thirdweb-dev/react";
 import { ethers } from "ethers";
 import form from "../styles/home.module.css";
 
-export default function getVotedGuardians({ contract, testamentOwnerAddress, testament }) {
+export default function VotedGuardiansList({ contract, testamentOwnerAddress, testament }) {
   const {
     data: votedGuardians,
     isLoading: guardiansLoading,
