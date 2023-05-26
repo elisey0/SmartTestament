@@ -531,12 +531,20 @@ export default function TestamentInfo({
           </div>
         </div>
       )}
-      {dbLoading ? <h1>Подключаемся к БД</h1> : <div></div>}
-      <VotedGuardiansList
-        contract={contract}
-        testamentOwnerAddress={userAddress}
-        testament={testament}
-      />
+      {dbLoading ? (
+        <h1>Подключаемся к БД</h1>
+      ) : (
+        <>
+          <h1 className={form.h1}>
+            <a href={dbTestament.ipfs}>Ссылка на IPFS с информацией о завещании</a>
+          </h1>
+          <VotedGuardiansList
+            contract={contract}
+            testamentOwnerAddress={userAddress}
+            testament={testament}
+          />
+        </>
+      )}
       <h2
         onClick={toggleRemoveHidden}
         className={` ${info.button} ${form.h1}`}

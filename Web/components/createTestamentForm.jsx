@@ -1,4 +1,4 @@
-import { Web3Button } from "@thirdweb-dev/react";
+import { Web3Button, useStorage } from "@thirdweb-dev/react";
 import { useEffect, useState } from "react";
 import Slider from "react-slider";
 import ReactSelect from "react-select";
@@ -18,6 +18,7 @@ import form from "../styles/home.module.css";
 import info from "../styles/info.module.css";
 
 export default function CreateTestamentForm({ selectedChain, userAddress, contractAddress }) {
+  const storage = useStorage();
   const [editHidden, setEditHidden] = useState(true);
   const toggleEditHidden = () => {
     setEditHidden(!editHidden);
@@ -319,11 +320,24 @@ export default function CreateTestamentForm({ selectedChain, userAddress, contra
                   }));
                   const merkleTreeData = await makeMerkleTree(web3Heirs);
                   const { root, proofs } = merkleTreeData;
-                  console.log("creation", merkleTreeData);
+                  const url = await storage.upload(
+                    {
+                      testamentOwner: userAddress,
+                      heirs: web3Heirs.map((heir) => ({
+                        ...heir,
+                        proofs: proofs[heir.heirAddress],
+                      })),
+                      guardians: guardians,
+                    },
+                    {
+                      uploadWithGatewayUrl: true,
+                    }
+                  );
                   const userRef = doc(db, `${selectedChain.name}`, userAddress);
                   await setDoc(userRef, {
                     heirs: web3Heirs,
                     guardians: guardians,
+                    ipfs: url,
                   });
                   await contract.call("createTestament", [
                     time * 360 * 24 * 60 * 60,
