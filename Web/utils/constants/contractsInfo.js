@@ -1,7 +1,7 @@
 export const contractsAddresses = {
-  80001: "0x3B0ef2fc0c13c5092428498B4129887120E5a9Fc",
-  97: "0x45E0Ea876F6c17c4e3910cD645EFfC4090Db74c9",
-  11155111: "0xB7c36ff2025651aEcC9AC59C1896B671b4a05EE8",
+  80001: "0xA287Cb07D3379271d52eD44c2DF18B7EEdD9B049",
+  97: "0x44507901944DFb4df8fcED883fA9A90d67204212",
+  11155111: "0xa248DaFac0C9e4Fac1a4ce964206390d08A53D35",
   1337: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
 };
 
@@ -12,30 +12,7 @@ export const localAbi = [
   { inputs: [], stateMutability: "nonpayable", type: "constructor" },
   {
     anonymous: false,
-    inputs: [
-      { indexed: false, internalType: "address", name: "user", type: "address" },
-      {
-        components: [
-          { internalType: "uint256", name: "expirationTime", type: "uint256" },
-          { internalType: "bytes32", name: "erc20HeirsMerkleRoot", type: "bytes32" },
-          {
-            components: [
-              { internalType: "uint256", name: "approvedVotes", type: "uint256" },
-              { internalType: "uint256", name: "neededVotes", type: "uint256" },
-              { internalType: "uint256", name: "confirmationTime", type: "uint256" },
-              { internalType: "address[]", name: "guardians", type: "address[]" },
-            ],
-            internalType: "struct SmartTestament.Voting",
-            name: "voting",
-            type: "tuple",
-          },
-        ],
-        indexed: false,
-        internalType: "struct SmartTestament.Testament",
-        name: "newTestament",
-        type: "tuple",
-      },
-    ],
+    inputs: [{ indexed: false, internalType: "address", name: "testamentOwner", type: "address" }],
     name: "CreatedTestament",
     type: "event",
   },
@@ -55,7 +32,7 @@ export const localAbi = [
       { indexed: false, internalType: "uint256", name: "neededVotes", type: "uint256" },
       { indexed: false, internalType: "address[]", name: "newGuardians", type: "address[]" },
     ],
-    name: "GuardiansChanged",
+    name: "GuardiansUpdated",
     type: "event",
   },
   {
@@ -64,7 +41,7 @@ export const localAbi = [
       { indexed: false, internalType: "address", name: "testamentOwner", type: "address" },
       { indexed: false, internalType: "bytes32", name: "newErc20HeirsMerkleRoot", type: "bytes32" },
     ],
-    name: "HeirsChanged",
+    name: "HeirsUpdated",
     type: "event",
   },
   {
