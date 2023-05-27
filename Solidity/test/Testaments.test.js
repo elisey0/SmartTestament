@@ -9,6 +9,21 @@ const MIN_TESTAMENT_LOCK = 31104000;
 const erc20Shares = [1000, 3000, 6000];
 const neededVotes = 2;
 
+const defaultHeirsWithShares = [
+  {
+    heirAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    erc20Share: erc20Shares[0],
+  },
+  {
+    heirAddress: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    erc20Share: erc20Shares[1],
+  },
+  {
+    heirAddress: "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    erc20Share: erc20Shares[2],
+  },
+];
+
 function inheritanceAmount(tokenAmount, share) {
   return tokenAmount
     .mul(BASE_POINT - FEE_BP)
@@ -51,7 +66,6 @@ describe("Testing SmartTestament", function () {
   async function deployTestamentCryptoFixture() {
     // Contracts are deployed using the first signer/account by default
     const [owner, heir, guardian2, feeAddress] = await ethers.getSigners();
-
     const TestamentContract = await hre.ethers.getContractFactory("SmartTestament");
     const testamentContract = await TestamentContract.connect(feeAddress).deploy();
     await testamentContract.deployed();
@@ -111,6 +125,91 @@ describe("Testing SmartTestament", function () {
     it("Owner should not have testament", async function () {
       expect(await this.testamentContract.getTestamentState(this.owner.address)).to.equal(0);
     });
+
+    it("Fee address changed and not for Not Owner", async function () {
+      await this.testamentContract.updateFeeAddress(this.owner.address);
+      expect(await this.testamentContract.feeAddress()).to.equal(this.owner.address);
+      await expect(
+        this.testamentContract.connect(this.heir).updateFeeAddress(this.owner.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("withdrawDonations should work", async function () {
+      value = ethers.utils.parseEther("1.0");
+      const transactionHash = await this.owner.sendTransaction({
+        to: this.testamentContract.address,
+        value: value,
+      });
+      expect(await this.testamentContract.withdrawDonations()).to.changeEtherBalance(
+        [this.testamentContract.address, this.heir.address],
+        -value,
+        value
+      );
+    });
+  });
+
+  describe("Testing wrong creating and event", function () {
+    it("Event CreatedTestament", async function () {
+      const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
+      const { root, proofs } = merkleTreeData;
+
+      await expect(
+        this.testamentContract
+          .connect(this.owner)
+          .createTestament(
+            MIN_TESTAMENT_LOCK,
+            neededVotes,
+            [this.heir.address, this.guardian2.address],
+            root
+          )
+      )
+        .to.emit(this.testamentContract, "CreatedTestament")
+        .withArgs(this.owner.address);
+    });
+
+    it("Wrong needed votes", async function () {
+      const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
+      const { root, proofs } = merkleTreeData;
+
+      await expect(
+        this.testamentContract
+          .connect(this.owner)
+          .createTestament(MIN_TESTAMENT_LOCK, 0, [this.heir.address, this.guardian2.address], root)
+      ).to.be.revertedWith("Needed votes must be greater than null");
+    });
+
+    it("Lower than two voters", async function () {
+      const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
+      const { root, proofs } = merkleTreeData;
+
+      await expect(
+        this.testamentContract
+          .connect(this.owner)
+          .createTestament(MIN_TESTAMENT_LOCK, 1, [this.heir.address], root)
+      ).to.be.revertedWith("No less than two guardians");
+    });
+
+    it("Too many guardians", async function () {
+      const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
+      const { root, proofs } = merkleTreeData;
+
+      await expect(
+        this.testamentContract
+          .connect(this.owner)
+          .createTestament(MIN_TESTAMENT_LOCK, 1, Array(21).fill(this.heir.address), root)
+      ).to.be.revertedWith("Too many guardians");
+    });
+
+    it("Pervert needed votes > guardians.length", async function () {
+      const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
+      const { root, proofs } = merkleTreeData;
+
+      await expect(
+        this.testamentContract
+          .connect(this.owner)
+          .createTestament(MIN_TESTAMENT_LOCK, 3, [this.heir.address, this.guardian2.address], root)
+      ).to.be.revertedWith("Needed votes should <= Number of guardians");
+    });
   });
 
   describe("Contract logic testing", function () {
@@ -149,32 +248,96 @@ describe("Testing SmartTestament", function () {
       });
 
       it("Roots must be equal", async function () {
-        const heirsWithShares = [
-          {
-            heirAddress: this.heir.address,
-            erc20Share: erc20Shares[0],
-          },
-          {
-            heirAddress: this.guardian2.address,
-            erc20Share: erc20Shares[1],
-          },
-          {
-            heirAddress: this.feeAddress.address,
-            erc20Share: erc20Shares[2],
-          },
-        ];
-
-        const merkleTreeData = await makeMerkleTree(heirsWithShares);
+        const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
         const { root } = merkleTreeData;
         expect(
           (await this.testamentContract.testaments(this.owner.address)).erc20HeirsMerkleRoot
         ).to.equal(root);
       });
+
+      it("Im Alive function should move for right expiration time before voting and emit TestatorAlive", async function () {
+        const firstExpTime = (await this.testamentContract.testaments(this.owner.address))
+          .expirationTime;
+        await this.testamentContract.connect(this.owner).imAlive(MIN_TESTAMENT_LOCK);
+        expect((await this.testamentContract.testaments(this.owner.address)).expirationTime)
+          .to.equal(firstExpTime.add(MIN_TESTAMENT_LOCK))
+          .to.emit(this.testamentContract, "TestatorAlive")
+          .withArgs(this.owner.address, firstExpTime.add(MIN_TESTAMENT_LOCK));
+      });
+
+      it("Im Alive function should move for right expiration time when voting active", async function () {
+        await time.increaseTo(
+          (await this.testamentContract.testaments(this.owner.address)).expirationTime.add(1000)
+        );
+        const firstExpTime = await time.latest();
+
+        await this.testamentContract.connect(this.owner).imAlive(MIN_TESTAMENT_LOCK);
+        expect(
+          (await this.testamentContract.testaments(this.owner.address)).expirationTime
+        ).to.equal(firstExpTime + MIN_TESTAMENT_LOCK + 1);
+      });
+
+      it("Im Alive function require More than 360 days and right state", async function () {
+        await expect(this.testamentContract.connect(this.owner).imAlive(1)).to.be.revertedWith(
+          "New lock time should be no less than 360 days"
+        );
+        await time.increaseTo(
+          (await this.testamentContract.testaments(this.owner.address)).expirationTime.add(1)
+        );
+        await this.testamentContract.connect(this.guardian2).voteForUnlock(this.owner.address);
+        await this.testamentContract.connect(this.heir).voteForUnlock(this.owner.address);
+        await expect(
+          this.testamentContract.connect(this.owner).imAlive(MIN_TESTAMENT_LOCK)
+        ).to.be.revertedWith("State should be OwnerAlive or VoteActive, or Delete this testament");
+      });
+
+      it("Delete should work and call event TestamentDeleted", async function () {
+        await expect(this.testamentContract.connect(this.owner).deleteTestament())
+          .to.emit(this.testamentContract, "TestamentDeleted")
+          .withArgs(this.owner.address);
+        expect(await this.testamentContract.getTestamentState(this.owner.address)).to.equal(0);
+      });
+
+      it("Heirs updates should work and call event HeirsUpdated", async function () {
+        const randomRoot = "0x556536e406b5c301d3a713c27fbac231df042c9425d8b946c896155f58198d45";
+        await expect(this.testamentContract.connect(this.owner).updateHeirs(randomRoot))
+          .to.emit(this.testamentContract, "HeirsUpdated")
+          .withArgs(this.owner.address, randomRoot);
+        expect(
+          (await this.testamentContract.testaments(this.owner.address)).erc20HeirsMerkleRoot
+        ).to.equal(randomRoot);
+        await skipToUnlock(this.testamentContract, this.owner.address);
+        await expect(
+          this.testamentContract.connect(this.owner).updateHeirs(randomRoot)
+        ).to.be.revertedWith("Must be alive");
+      });
+
+      it("Guardians updates should work and call event GuardiansUpdated", async function () {
+        await expect(
+          this.testamentContract
+            .connect(this.owner)
+            .updateGuardians(2, [this.feeAddress.address, this.guardian2.address])
+        )
+          .to.emit(this.testamentContract, "GuardiansUpdated")
+          .withArgs(this.owner.address, 2, [this.feeAddress.address, this.guardian2.address]);
+        expect(
+          (await this.testamentContract.testaments(this.owner.address)).voting.neededVotes
+        ).to.equal(2);
+        expect(
+          (await this.testamentContract.testaments(this.owner.address)).voting.guardians
+        ).to.deep.equal([this.feeAddress.address, this.guardian2.address]);
+        await skipToUnlock(this.testamentContract, this.owner.address);
+        await expect(
+          this.testamentContract
+            .connect(this.owner)
+            .updateGuardians(2, [this.feeAddress.address, this.guardian2.address])
+        ).to.be.revertedWith("Must be alive");
+      });
     });
 
     describe("Withdraw Testament", function () {
       describe("Validations", function () {
-        it("Should revert with the death must be confirmed if called too soon", async function () {
+        it("Should revert if withdraw called too soon, too many tokens, or not the heir", async function () {
           await expect(
             this.testamentContract.connect(this.heir).withdrawTestament(
               this.owner.address,
@@ -185,12 +348,20 @@ describe("Testing SmartTestament", function () {
               this.proofs[this.heir.address]
             )
           ).to.be.revertedWith("Testament must be Unlocked");
-        });
-
-        it("Shouldn't reverted if the DeathConfirmed", async function () {
           await skipToUnlock(this.testamentContract, this.owner.address);
           await expect(
             this.testamentContract.connect(this.heir).withdrawTestament(
+              this.owner.address,
+              {
+                erc20Tokens: Array(102).fill(this.wethContract.address),
+                erc20Share: this.heirErc20Share,
+              },
+              this.proofs[this.heir.address]
+            )
+          ).to.be.revertedWith("Too many tokens");
+
+          await expect(
+            this.testamentContract.connect(this.owner).withdrawTestament(
               this.owner.address,
               {
                 erc20Tokens: [this.wethContract.address],
@@ -198,10 +369,10 @@ describe("Testing SmartTestament", function () {
               },
               this.proofs[this.heir.address]
             )
-          ).not.to.be.reverted;
+          ).to.be.revertedWith("Not the Heir");
         });
 
-        it("Should return false to address not in testament", async function () {
+        it("isHeir should return false to address not in testament", async function () {
           expect(
             await this.testamentContract
               .connect(this.owner)
@@ -209,23 +380,8 @@ describe("Testing SmartTestament", function () {
           ).to.equal(false);
         });
 
-        it("Should return true to address in testament", async function () {
-          const heirsWithShares = [
-            {
-              heirAddress: this.heir.address,
-              erc20Share: erc20Shares[0],
-            },
-            {
-              heirAddress: this.guardian2.address,
-              erc20Share: erc20Shares[1],
-            },
-            {
-              heirAddress: this.feeAddress.address,
-              erc20Share: erc20Shares[2],
-            },
-          ];
-
-          const merkleTreeData = await makeMerkleTree(heirsWithShares);
+        it("isHeir should return true to address in testament", async function () {
+          const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
           const { proofs } = merkleTreeData;
 
           expect(
@@ -235,8 +391,9 @@ describe("Testing SmartTestament", function () {
           ).to.equal(true);
         });
       });
+
       describe("Transfers", function () {
-        it("Should transfer the funds to the heir", async function () {
+        it("Should transfer the funds to the heir and pervert claiming twice", async function () {
           await skipToUnlock(this.testamentContract, this.owner.address);
           const wethAmount = await this.wethContract.balanceOf(this.owner.address);
 
@@ -249,17 +406,45 @@ describe("Testing SmartTestament", function () {
               },
               this.proofs[await this.heir.address]
             )
-          ).to.changeTokenBalances(
-            this.wethContract,
-            [this.owner, this.heir],
-            [
-              "-" +
-                wethAmount
-                  .mul(FEE_BP)
-                  .div(BASE_POINT)
-                  .add(inheritanceAmount(wethAmount, this.heirErc20Share)),
-              "" + inheritanceAmount(wethAmount, this.heirErc20Share),
-            ]
+          )
+            .to.changeTokenBalances(
+              this.wethContract,
+              [this.owner, this.heir],
+              [
+                "-" +
+                  wethAmount
+                    .mul(FEE_BP)
+                    .div(BASE_POINT)
+                    .add(inheritanceAmount(wethAmount, this.heirErc20Share)),
+                "" + inheritanceAmount(wethAmount, this.heirErc20Share),
+              ]
+            )
+            .to.emit(this.testamentContract, "WithdrawTestament")
+            .withArgs(this.owner.address, this.heir.address);
+
+          await expect(
+            this.testamentContract.connect(this.heir).withdrawTestament(
+              this.owner.address,
+              {
+                erc20Tokens: [this.wethContract.address],
+                erc20Share: this.heirErc20Share,
+              },
+              this.proofs[await this.heir.address]
+            )
+          ).to.be.revertedWith("Already claimed");
+        });
+
+        it("Zero balance withdraw", async function () {
+          await skipToUnlock(this.testamentContract, this.owner.address);
+          const wethAmount = await this.wethContract.balanceOf(this.owner.address);
+          await this.wethContract.connect(this.owner).transfer(this.guardian2.address, wethAmount);
+          await this.testamentContract.connect(this.heir).withdrawTestament(
+            this.owner.address,
+            {
+              erc20Tokens: [this.wethContract.address],
+              erc20Share: this.heirErc20Share,
+            },
+            this.proofs[await this.heir.address]
           );
         });
 
@@ -409,17 +594,21 @@ describe("Testing SmartTestament", function () {
     });
 
     describe("Voting System", function () {
-      it("Get Voted Guardians", async function () {
+      it("Get Voted Guardians and state VoteActive", async function () {
         await time.increaseTo(
           (await this.testamentContract.testaments(this.owner.address)).expirationTime.add(1)
         );
+        expect(await this.testamentContract.getTestamentState(this.owner.address)).to.equal(2);
         await this.testamentContract.connect(this.guardian2).voteForUnlock(this.owner.address);
         expect(await this.testamentContract.getVotedGuardians(this.owner.address)).to.eql([
           this.guardian2.address,
         ]);
       });
 
-      it("Right voting amount", async function () {
+      it("Right voting amount, TestamentState.ConfirmationWaiting and pervert before VotingActive", async function () {
+        await expect(
+          this.testamentContract.connect(this.guardian2).voteForUnlock(this.owner.address)
+        ).to.be.revertedWith("Voting is not active");
         await time.increaseTo(
           (await this.testamentContract.testaments(this.owner.address)).expirationTime.add(1)
         );
@@ -428,6 +617,7 @@ describe("Testing SmartTestament", function () {
         expect(await this.testamentContract.getApproveVotesAmount(this.owner.address)).to.eql(
           ethers.BigNumber.from("2")
         );
+        expect(await this.testamentContract.getTestamentState(this.owner.address)).to.eql(3);
       });
     });
   });

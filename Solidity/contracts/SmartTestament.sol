@@ -73,19 +73,17 @@ contract SmartTestament is Ownable {
         _;
     }
 
-    event CreatedTestament(address user, Testament newTestament);
+    event CreatedTestament(address testamentOwner);
     event TestamentDeleted(address testamentOwner);
-    event HeirsChanged(address testamentOwner, bytes32 newErc20HeirsMerkleRoot);
-    event GuardiansChanged(
+    event HeirsUpdated(address testamentOwner, bytes32 newErc20HeirsMerkleRoot);
+    event GuardiansUpdated(
         address testamentOwner,
         uint256 neededVotes,
         address[] newGuardians
     );
 
     event TestatorAlive(address testamentOwner, uint256 newExpirationTime);
-
     event DeathConfirmed(address testamentOwner, uint256 deathConfirmationTime);
-
     event WithdrawTestament(address testamentOwner, address heir);
 
     /// @notice Deploy with address for fee collection
@@ -137,7 +135,7 @@ contract SmartTestament is Ownable {
 
         testaments[msg.sender] = newTestament;
 
-        emit CreatedTestament(msg.sender, newTestament);
+        emit CreatedTestament(msg.sender);
     }
 
     /**
@@ -151,7 +149,7 @@ contract SmartTestament is Ownable {
         correctState(TestamentState.OwnerAlive, msg.sender, "Must be alive")
     {
         testaments[msg.sender].erc20HeirsMerkleRoot = _newErc20HeirsMerkleRoot;
-        emit HeirsChanged(msg.sender, _newErc20HeirsMerkleRoot);
+        emit HeirsUpdated(msg.sender, _newErc20HeirsMerkleRoot);
     }
 
     /// @notice Update Guardians and needed votes
@@ -160,7 +158,7 @@ contract SmartTestament is Ownable {
         address[] calldata _guardians
     )
         external
-        correctState(TestamentState.OwnerAlive, msg.sender, "Must be Alive")
+        correctState(TestamentState.OwnerAlive, msg.sender, "Must be alive")
     {
         checkVotingParam(_needed, _guardians.length);
 
@@ -169,7 +167,7 @@ contract SmartTestament is Ownable {
         userTestament.voting.approvedVotes = 0;
         userTestament.voting.guardians = _guardians;
         userTestament.voting.neededVotes = _needed;
-        emit GuardiansChanged(msg.sender, _needed, _guardians);
+        emit GuardiansUpdated(msg.sender, _needed, _guardians);
     }
 
     /// @notice Delete testament for message sender
