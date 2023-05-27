@@ -189,8 +189,9 @@ contract SmartTestament is Ownable {
             "State should be OwnerAlive or VoteActive, or Delete this testament"
         );
         Testament memory userTestament = testaments[msg.sender];
-        userTestament.voting.approvedVotes = 0;
+
         if (currentState == TestamentState.VoteActive) {
+            userTestament.voting.approvedVotes = 0;
             userTestament.expirationTime = block.timestamp + _lockTime;
         } else userTestament.expirationTime += _lockTime;
 
