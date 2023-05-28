@@ -1,4 +1,4 @@
-import { ThirdwebProvider, useActiveChain } from "@thirdweb-dev/react";
+import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { Mumbai, BinanceTestnet, Sepolia, Localhost } from "@thirdweb-dev/chains";
 import Layout from "../components/layout";
 import { useMoralisInitialize } from "../utils/moralis/useMoralisInit";
