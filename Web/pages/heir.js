@@ -1,10 +1,4 @@
-import {
-  Web3Button,
-  useActiveChain,
-  useAddress,
-  useContract,
-  useContractRead,
-} from "@thirdweb-dev/react";
+import { Web3Button, useAddress, useContract, useContractRead } from "@thirdweb-dev/react";
 import { useEffect, useState, useContext } from "react";
 import { ethers } from "ethers";
 import useFetchTestamentsByHeir from "../utils/firebase/fetchTestamentsByHeir";
@@ -75,6 +69,11 @@ function TestamentWithdrawItem({
   const [unlockTime, setUnlockTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [erc20Info, setErc20Info] = useState(null);
+  const { data: isClaimed } = useContractRead(contract, "alreadyClaimed", [
+    testamentOwnerAddress,
+    userAddress,
+  ]);
+
   const handleTimeChange = (value) => {
     setUnlockTime(value);
     setTimeLeft(countdownTimer(value));
@@ -109,13 +108,12 @@ function TestamentWithdrawItem({
           testamentOwnerAddress,
           contractAddress
         );
-        console.log(responseApprovals.map((item) => item.erc20Address));
+
         const responseBalances = await getErc20Balances(
           selectedChain,
           responseApprovals.map((item) => item.erc20Address),
           testamentOwnerAddress
         );
-        console.log(responseBalances);
 
         const erc20Info = responseApprovals.map((item) => {
           const matchingObject = responseBalances.find(
@@ -142,7 +140,7 @@ function TestamentWithdrawItem({
       ) : (
         <div className={form.testamentFrame}>
           <h1>Завещание {testamentOwnerAddress}</h1>
-          {!confState && false ? (
+          {!confState ? (
             <>
               <h1 className={form.h1}>Ожидаем консенсуса от доверенных лиц</h1>
               <h3 style={{ marginBottom: "0" }}>
@@ -162,7 +160,7 @@ function TestamentWithdrawItem({
                 <h3>Загрузка токенов из завещания</h3>
               )}
             </>
-          ) : timeLeft && false ? (
+          ) : timeLeft ? (
             <>
               <h1>Если завещание не отменят через {timeLeft}</h1>
               <h3 style={{ marginBottom: "0" }}>
@@ -175,6 +173,8 @@ function TestamentWithdrawItem({
                 <h3>Загрузка токенов из завещания</h3>
               )}
             </>
+          ) : isClaimed ? (
+            <h1 className={form.h1}>Вы уже забрали свою долю наследства</h1>
           ) : (
             <>
               <h1 className={form.h1}>Вы можете забрать свою долю токенов</h1>
@@ -198,10 +198,7 @@ function TestamentWithdrawItem({
                     await contract.call("withdrawTestament", [
                       testamentOwnerAddress,
                       {
-                        erc20Tokens: [
-                          "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-                          "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-                        ],
+                        erc20Tokens: erc20Info.map((token) => token.address),
                         erc20Share: heirShare * 100,
                       },
                       proofs[userAddress],

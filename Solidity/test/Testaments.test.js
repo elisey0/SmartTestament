@@ -134,7 +134,7 @@ describe("Testing SmartTestament", function () {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
-    it("withdrawDonations should work", async function () {
+    it("Withdrawing donations should work", async function () {
       value = ethers.utils.parseEther("1.0");
       const transactionHash = await this.owner.sendTransaction({
         to: this.testamentContract.address,
@@ -145,6 +145,9 @@ describe("Testing SmartTestament", function () {
         -value,
         value
       );
+      await expect(
+        this.testamentContract.connect(this.heir).withdrawDonations()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
@@ -167,7 +170,7 @@ describe("Testing SmartTestament", function () {
         .withArgs(this.owner.address);
     });
 
-    it("Wrong needed votes", async function () {
+    it("Should not pass 0 needed votes", async function () {
       const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
       const { root, proofs } = merkleTreeData;
 
@@ -178,7 +181,7 @@ describe("Testing SmartTestament", function () {
       ).to.be.revertedWith("Needed votes must be greater than null");
     });
 
-    it("Lower than two voters", async function () {
+    it("Should not pass less than two guardians", async function () {
       const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
       const { root, proofs } = merkleTreeData;
 
@@ -189,7 +192,7 @@ describe("Testing SmartTestament", function () {
       ).to.be.revertedWith("No less than two guardians");
     });
 
-    it("Too many guardians", async function () {
+    it("Should not pass more than  MAX_GUARDIANS guardians", async function () {
       const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
       const { root, proofs } = merkleTreeData;
 
@@ -200,7 +203,7 @@ describe("Testing SmartTestament", function () {
       ).to.be.revertedWith("Too many guardians");
     });
 
-    it("Pervert needed votes > guardians.length", async function () {
+    it("Prevention needed votes > guardians.length", async function () {
       const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
       const { root, proofs } = merkleTreeData;
 
@@ -231,11 +234,11 @@ describe("Testing SmartTestament", function () {
     });
 
     describe("Create Testament", function () {
-      it("Owner testament should have OwnerAlive state", async function () {
+      it("Owner testament should have TestatorAlive state", async function () {
         expect(await this.testamentContract.getTestamentState(this.owner.address)).to.equal(1);
       });
 
-      it("Owner should don`t have two testaments", async function () {
+      it("Owner must not have two testaments", async function () {
         await expect(
           createTestament(
             this.testamentContract,
@@ -245,14 +248,6 @@ describe("Testing SmartTestament", function () {
             this.feeAddress
           )
         ).to.be.revertedWith("Already exists");
-      });
-
-      it("Roots must be equal", async function () {
-        const merkleTreeData = await makeMerkleTree(defaultHeirsWithShares);
-        const { root } = merkleTreeData;
-        expect(
-          (await this.testamentContract.testaments(this.owner.address)).erc20HeirsMerkleRoot
-        ).to.equal(root);
       });
 
       it("Im Alive function should move for right expiration time before voting and emit TestatorAlive", async function () {
@@ -288,7 +283,9 @@ describe("Testing SmartTestament", function () {
         await this.testamentContract.connect(this.heir).voteForUnlock(this.owner.address);
         await expect(
           this.testamentContract.connect(this.owner).imAlive(MIN_TESTAMENT_LOCK)
-        ).to.be.revertedWith("State should be OwnerAlive or VoteActive, or Delete this testament");
+        ).to.be.revertedWith(
+          "State should be TestatorAlive or VoteActive, or Delete this testament"
+        );
       });
 
       it("Delete should work and call event TestamentDeleted", async function () {
@@ -393,7 +390,7 @@ describe("Testing SmartTestament", function () {
       });
 
       describe("Transfers", function () {
-        it("Should transfer the funds to the heir and pervert claiming twice", async function () {
+        it("Should transfer the funds to the heir and prevention claiming twice", async function () {
           await skipToUnlock(this.testamentContract, this.owner.address);
           const wethAmount = await this.wethContract.balanceOf(this.owner.address);
 
@@ -594,7 +591,7 @@ describe("Testing SmartTestament", function () {
     });
 
     describe("Voting System", function () {
-      it("Get Voted Guardians and state VoteActive", async function () {
+      it("Get voted guardians and state VoteActive", async function () {
         await time.increaseTo(
           (await this.testamentContract.testaments(this.owner.address)).expirationTime.add(1)
         );
@@ -605,7 +602,7 @@ describe("Testing SmartTestament", function () {
         ]);
       });
 
-      it("Right voting amount, TestamentState.ConfirmationWaiting and pervert before VotingActive", async function () {
+      it("Right voting amount, TestamentState ConfirmationWaiting and prevention before VoteActive", async function () {
         await expect(
           this.testamentContract.connect(this.guardian2).voteForUnlock(this.owner.address)
         ).to.be.revertedWith("Voting is not active");

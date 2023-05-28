@@ -5,7 +5,7 @@ import {
   useContract,
   useContractRead,
 } from "@thirdweb-dev/react";
-
+import { ethers } from "ethers";
 import { useEffect, useState, useContext } from "react";
 import useFetchTestamentsByGuardian from "../utils/firebase/fetchTestamentsByGuardian";
 
@@ -18,7 +18,7 @@ import form from "../styles/home.module.css";
 
 import countdownTimer from "../utils/countdownTimer";
 
-function TestamentVoteItem({ dbTestament, contractAddress, contract }) {
+function TestamentVoteItem({ dbTestament, contractAddress, contract, userAddress }) {
   const testamentOwnerAddress = dbTestament.testamentOwner;
   const {
     data: testament,
@@ -47,7 +47,17 @@ function TestamentVoteItem({ dbTestament, contractAddress, contract }) {
     setTimeLeft(countdownTimer(value));
   };
 
-  if (testamentLoading) {
+  const { data: votedGuardians, isLoading: guardiansLoading } = useContractRead(
+    contract,
+    "getVotedGuardians",
+    [testamentOwnerAddress]
+  );
+
+  const filteredVotedGuardians = votedGuardians?.filter(
+    (address) => address !== ethers.constants.AddressZero
+  );
+
+  if (testamentLoading || guardiansLoading) {
     return <h1>Подключаемся к контракту</h1>;
   }
 
@@ -56,33 +66,37 @@ function TestamentVoteItem({ dbTestament, contractAddress, contract }) {
       <h1>Завещание {testamentOwnerAddress}</h1>
       {unlockTime === 0 ? (
         <h1 className={form.h1}>Голосование завершено</h1>
+      ) : filteredVotedGuardians.includes(userAddress) ? (
+        <h1 className={form.h1}>Вы успешно проголосовали</h1>
       ) : timeLeft ? (
         <h1>Голосовать можно через {timeLeft}</h1>
       ) : (
-        <Web3Button
-          contractAddress={contractAddress}
-          contractAbi={localAbi}
-          action={async (contract) => {
-            try {
-              await contract.call("voteForUnlock", [testamentOwnerAddress]);
-              handleTimeChange(unlockTime + 360 * 24 * 60 * 60);
-            } catch (error) {
-              console.log(error);
-            }
-          }}
-          onSubmit={() => console.log("Транзакция отправлена")}
-          className={`${form["form-button"]} }`}
-        >
-          Проголосовать
-        </Web3Button>
+        <>
+          <Web3Button
+            contractAddress={contractAddress}
+            contractAbi={localAbi}
+            action={async (contract) => {
+              try {
+                await contract.call("voteForUnlock", [testamentOwnerAddress]);
+                handleTimeChange(unlockTime + 360 * 24 * 60 * 60);
+              } catch (error) {
+                console.log(error);
+              }
+            }}
+            onSubmit={() => console.log("Транзакция отправлена")}
+            className={`${form["form-button"]} }`}
+          >
+            Проголосовать
+          </Web3Button>
+          <h3 style={{ marginBottom: "0" }}>
+            Инициируя транзакцию, вы подтверждаете смерть завещателя.
+          </h3>
+          <h3 style={{ margin: "0" }}>
+            Если через полгода, после достижения консенсуса, завещание не будет удалено
+          </h3>
+          <h3 style={{ margin: "0" }}>тогда наследники смогут забрать средства.</h3>
+        </>
       )}
-      <h3 style={{ marginBottom: "0" }}>
-        Инициируя транзакцию, вы подтверждаете смерть завещателя.
-      </h3>
-      <h3 style={{ margin: "0" }}>
-        Если через полгода, после достижения консенсуса, завещание не будет удалено
-      </h3>
-      <h3 style={{ margin: "0" }}>тогда наследники смогут забрать средства.</h3>
       <VotedGuardiansList
         contract={contract}
         testamentOwnerAddress={testamentOwnerAddress}
@@ -128,6 +142,7 @@ export default function Guardian() {
                   dbTestament={dbTestament}
                   contractAddress={contractAddress}
                   contract={contract}
+                  userAddress={userAddress}
                 />
               ))}
             </>

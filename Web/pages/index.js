@@ -1,5 +1,5 @@
-import { Web3Button, useAddress, useContract, useContractRead } from "@thirdweb-dev/react";
-import { useEffect, useState, useContext } from "react";
+import { useAddress, useContract, useContractRead } from "@thirdweb-dev/react";
+import { useContext } from "react";
 import { contractsAddresses, localAbi } from "../utils/constants/contractsInfo";
 
 import ChainContext from "../utils/chainContext";
@@ -14,11 +14,7 @@ export default function Home() {
   const { selectedChain, setSelectedChain } = useContext(ChainContext);
   const userAddress = useAddress();
   const contractAddress = contractsAddresses[selectedChain?.chainId] || null;
-  const { contract } = useContract(
-    contractAddress,
-    // selectedChain?.chainId === 1337 ? localAbi : undefined
-    localAbi
-  );
+  const { contract } = useContract(contractAddress, localAbi);
   const {
     data: testament,
     isLoading: testamentLoading,

@@ -1,12 +1,16 @@
 export const defaultTokensByChain = {
   80001: [
     {
-      name: "USDT",
-      address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+      name: "WETH",
+      address: "0x216DcFF851B373fdA76C50C0945e6c055F849744",
     },
     {
-      name: "WMATIC",
-      address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+      name: "USDT",
+      address: "0x72CD74c5397d91Bd1eE686dCe24a1a8E56A52297",
+    },
+    {
+      name: "TKN",
+      address: "0xE1675BC4C3A5e4A70885A5255D5915d20cCFed01",
     },
   ],
   97: [
@@ -26,11 +30,15 @@ export const defaultTokensByChain = {
   11155111: [
     {
       name: "USDT",
-      address: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      address: "0x70da24A9f6C045aE70E8612B20e48D3323b2DFBB",
     },
     {
       name: "WETH",
-      address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      address: "0xF178063c584ef224B7E222aF043ABEF21b0b8915",
+    },
+    {
+      name: "TNK",
+      address: "0x894ac92E7Cb099B67BA7a966671e77F6e345DC09",
     },
   ],
   1337: [

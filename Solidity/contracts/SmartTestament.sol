@@ -40,7 +40,7 @@ contract SmartTestament is Ownable {
     /// @notice Struct for testament state
     enum TestamentState {
         NotExist,
-        OwnerAlive,
+        TestatorAlive,
         VoteActive,
         ConfirmationWaiting,
         Unlocked
@@ -106,6 +106,7 @@ contract SmartTestament is Ownable {
 
     /**
      * @notice Create testament
+     * @param _lockTime: The time before voting
      * @param _needed: Need votes to confirm death
      * @param _guardians: array of guardians addresses
      * @param _erc20HeirsMerkleRoot: Merkle root of heirs and their shares
@@ -128,7 +129,7 @@ contract SmartTestament is Ownable {
         checkVotingParam(_needed, _guardians.length);
 
         Testament memory newTestament = Testament(
-            block.timestamp + MIN_TESTAMENT_LOCK,
+            block.timestamp + _lockTime,
             _erc20HeirsMerkleRoot,
             Voting(0, _needed, 0, _guardians)
         );
@@ -146,19 +147,23 @@ contract SmartTestament is Ownable {
         bytes32 _newErc20HeirsMerkleRoot
     )
         external
-        correctState(TestamentState.OwnerAlive, msg.sender, "Must be alive")
+        correctState(TestamentState.TestatorAlive, msg.sender, "Must be alive")
     {
         testaments[msg.sender].erc20HeirsMerkleRoot = _newErc20HeirsMerkleRoot;
         emit HeirsUpdated(msg.sender, _newErc20HeirsMerkleRoot);
     }
 
-    /// @notice Update Guardians and needed votes
+    /**
+     * @notice Update Guardians and needed votes
+     * @param _needed: needed votes amount
+     * @param _guardians: new guardians addresses array
+     */
     function updateGuardians(
         uint256 _needed,
         address[] calldata _guardians
     )
         external
-        correctState(TestamentState.OwnerAlive, msg.sender, "Must be alive")
+        correctState(TestamentState.TestatorAlive, msg.sender, "Must be alive")
     {
         checkVotingParam(_needed, _guardians.length);
 
@@ -176,7 +181,10 @@ contract SmartTestament is Ownable {
         emit TestamentDeleted(msg.sender);
     }
 
-    /// @notice Confirm that testament owner (message sender) still alive
+    /**
+     * @notice Confirm that testament owner (message sender) still alive
+     * @param  _lockTime: new lock time for testament
+     */
     function imAlive(uint256 _lockTime) external {
         require(
             _lockTime >= MIN_TESTAMENT_LOCK,
@@ -184,9 +192,9 @@ contract SmartTestament is Ownable {
         );
         TestamentState currentState = getTestamentState(msg.sender);
         require(
-            currentState == TestamentState.OwnerAlive ||
+            currentState == TestamentState.TestatorAlive ||
                 currentState == TestamentState.VoteActive,
-            "State should be OwnerAlive or VoteActive, or Delete this testament"
+            "State should be TestatorAlive or VoteActive, or Delete this testament"
         );
         Testament memory userTestament = testaments[msg.sender];
 
@@ -241,10 +249,7 @@ contract SmartTestament is Ownable {
     /**
      * @notice withdraw testament after death confirmation call from heirs
      * @param testamentOwner: testament creator
-     * @param tokens: {IERC20[] erc20Tokens; erc20Share;NFTinfo[] erc721Tokens;NFTinfo[] erc1155Tokens;}
-     * erc20Tokens: array of erc20 tokens
-     * erc721Tokens: array of {address nftAddress;uint256[] ids;} objects
-     * erc1155Tokens: array of {address nftAddress;uint256[] ids;} objects
+     * @param tokens: {IERC20[] erc20Tokens; erc20Share;}
      * @param merkleProof: merkleProof for withdrawing address
      */
     function withdrawTestament(
@@ -352,7 +357,7 @@ contract SmartTestament is Ownable {
         if (userTestament.expirationTime == 0) return TestamentState.NotExist;
         // If not vote not started yet
         if (block.timestamp < userTestament.expirationTime)
-            return TestamentState.OwnerAlive;
+            return TestamentState.TestatorAlive;
         else {
             // If approved votes >= needed to unlock testament or time has passed more than CONTINGENCY_PERIOD
             if (
@@ -371,7 +376,7 @@ contract SmartTestament is Ownable {
         }
     }
 
-    /// @notice Validate merkleProof for message sender and root in testament
+    /// @notice Validate merkleProof for message sender with share and root in testament
     function isHeir(
         address testamentOwner,
         uint256 erc20Share,

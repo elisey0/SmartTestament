@@ -94,7 +94,7 @@ export default function TestamentInfo({
         erc20Share: heir.erc20Share / 100,
       }));
       setHeirs(jsxHeirs);
-      setGuardians(dbTestament.guardians);
+      setGuardians(dbTestament?.guardians);
     }
   }, [dbTestament]);
 
@@ -536,7 +536,7 @@ export default function TestamentInfo({
       ) : (
         <>
           <h1 className={form.h1}>
-            <a href={dbTestament.ipfs}>Ссылка на IPFS с информацией о завещании</a>
+            <a href={dbTestament?.ipfs}>Ссылка на IPFS с информацией о завещании</a>
           </h1>
           <VotedGuardiansList
             contract={contract}

@@ -44,7 +44,7 @@ export default function Navbar({ selectedChain }) {
           </Link>
         </div>
         <div className={header.wallet}>
-          <ConnectWallet />
+          <ConnectWallet btnTitle="Подключите кошелек" modalTitle="Выберете или уставите новый" />
         </div>
       </header>
     </>
