@@ -14,6 +14,7 @@ function MyApp({ Component, pageProps }) {
       <ThirdwebProvider
         activeChain={selectedChain}
         supportedChains={[Mumbai, BinanceTestnet, Sepolia, Localhost]}
+        autoConnect={true}
       >
         <Layout selectedChain={selectedChain}>
           <Component {...pageProps} setSelectedChain={setSelectedChain} />

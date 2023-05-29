@@ -1,4 +1,4 @@
-import { Web3Button, useContractRead } from "@thirdweb-dev/react";
+import { Web3Button, useStorage } from "@thirdweb-dev/react";
 import { useState, useEffect } from "react";
 import Slider from "react-slider";
 import ReactSelect from "react-select";
@@ -28,6 +28,7 @@ export default function TestamentInfo({
   contract,
   testament,
 }) {
+  const storage = useStorage();
   const [editHidden, setEditHidden] = useState(true);
   const toggleEditHidden = () => {
     setEditHidden(!editHidden);
@@ -267,11 +268,24 @@ export default function TestamentInfo({
                         erc20Share: heir.erc20Share * 100,
                       }));
                       const merkleTreeData = await makeMerkleTree(web3Heirs);
-                      const { root } = merkleTreeData;
-
+                      const { root, proofs } = merkleTreeData;
+                      const url = await storage.upload(
+                        {
+                          testamentOwner: userAddress,
+                          heirs: web3Heirs.map((heir) => ({
+                            ...heir,
+                            proofs: proofs[heir.heirAddress],
+                          })),
+                          guardians: guardians,
+                        },
+                        {
+                          uploadWithGatewayUrl: true,
+                        }
+                      );
                       const userRef = doc(db, `${selectedChain.name}`, userAddress);
                       await updateDoc(userRef, {
                         heirs: web3Heirs,
+                        ipfs: url,
                       });
                       await contract.call("updateHeirs", [root]);
                     } catch (error) {
@@ -350,9 +364,29 @@ export default function TestamentInfo({
                   contractAbi={localAbi}
                   action={async (contract) => {
                     try {
+                      const web3Heirs = heirs.map((heir) => ({
+                        ...heir,
+                        erc20Share: heir.erc20Share * 100,
+                      }));
+                      const merkleTreeData = await makeMerkleTree(web3Heirs);
+                      const { proofs } = merkleTreeData;
+                      const url = await storage.upload(
+                        {
+                          testamentOwner: userAddress,
+                          heirs: web3Heirs.map((heir) => ({
+                            ...heir,
+                            proofs: proofs[heir.heirAddress],
+                          })),
+                          guardians: guardians,
+                        },
+                        {
+                          uploadWithGatewayUrl: true,
+                        }
+                      );
                       const userRef = doc(db, `${selectedChain.name}`, userAddress);
                       await updateDoc(userRef, {
                         guardians: guardians,
+                        ipfs: url,
                       });
                       await contract.call("updateGuardians", [
                         votes,
